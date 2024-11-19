@@ -74,6 +74,37 @@ export class AudioHandler {
 				}
 			);
 
+			let newFileContent = `![[${audioFilePath}]]\n${response.data.text}`;
+
+			if (this.plugin.settings.postProcessing) {
+				const postProcessingRequestData = {
+					"model": "gpt-4o",
+					"messages": [
+						{
+							"role": "system",
+							"content": this.plugin.settings.postProcessingPrompt
+						},
+						{
+							"role": "user",
+							"content": response.data.text
+						}
+					]
+				};
+
+				const postProcessingResponse = await axios.post(
+					'https://api.openai.com/v1/chat/completions',
+					JSON.stringify(postProcessingRequestData),
+					{
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${this.plugin.settings.apiKey}`,
+						},
+					}
+				);
+
+				newFileContent = `![[${audioFilePath}]]\n${postProcessingResponse.data.choices[0].message.content}`;
+			}
+
 			// Determine if a new file should be created
 			const activeView =
 				this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
@@ -83,7 +114,7 @@ export class AudioHandler {
 			if (shouldCreateNewFile) {
 				await this.plugin.app.vault.create(
 					noteFilePath,
-					`![[${audioFilePath}]]\n${response.data.text}`
+					newFileContent
 				);
 				await this.plugin.app.workspace.openLinkText(
 					noteFilePath,

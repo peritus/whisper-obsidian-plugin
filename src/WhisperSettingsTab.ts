@@ -8,6 +8,9 @@ export class WhisperSettingsTab extends PluginSettingTab {
 	private createNewFileInput: Setting;
 	private saveAudioFileInput: Setting;
 
+	private createPostProcessing: Setting;
+	private createPostProcessingPrompt: Setting;
+
 	constructor(app: App, plugin: Whisper) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -26,6 +29,8 @@ export class WhisperSettingsTab extends PluginSettingTab {
 		this.createLanguageSetting();
 		this.createSaveAudioFileToggleSetting();
 		this.createSaveAudioFilePathSetting();
+		this.createPostProcessingToggleSetting();
+		this.createPostProcessingPromptSetting();
 		this.createNewFileToggleSetting();
 		this.createNewFilePathSetting();
 		this.createDebugModeToggleSetting();
@@ -172,6 +177,60 @@ export class WhisperSettingsTab extends PluginSettingTab {
 					})
 			)
 			.setDisabled(!this.plugin.settings.saveAudioFile);
+	}
+
+	private createPostProcessingToggleSetting(): void {
+		this.createPostProcessing = new Setting(this.containerEl)
+			.setName("Enable Post processing")
+			.setDesc(
+				"Turn on to pipe result of the transcription through GPT to create the final document."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.postProcessing)
+					.onChange(async (value) => {
+						this.plugin.settings.postProcessing =
+							value;
+						if (!value) {
+							this.plugin.settings.postProcessingPrompt = "";
+						}
+						await this.settingsManager.saveSettings(
+							this.plugin.settings
+						);
+						this.createPostProcessingPrompt.setDisabled(!value);
+					});
+			});
+	}
+
+	private createPostProcessingPromptSetting(): void {
+		this.createPostProcessingPrompt = new Setting(this.containerEl)
+			.setName("Post Processing Prompt")
+			.setDesc(
+				"Instruct GPT on how to process the result of the transcription to create the final document. Make sure it matches the chosen language."
+			)
+			.addText((text) => {
+				text.setPlaceholder(
+					/*
+
+					Maybe this ?
+					
+					The following is a transcript of an audio note. Please format in markdown,
+					give it structure but keep it as accurate as possible. Then prepend with a summary section.
+
+					*/
+					  "Format as markdown."
+				    )
+					.setValue(
+						this.plugin.settings.postProcessingPrompt
+					)
+					.onChange(async (value) => {
+						this.plugin.settings.postProcessingPrompt =
+							value;
+						await this.settingsManager.saveSettings(
+							this.plugin.settings
+						);
+					});
+			})
 	}
 
 	private createNewFileToggleSetting(): void {
